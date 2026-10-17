@@ -1,0 +1,2071 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<title>Gemini Studio — Интеллектуальный чат и база памяти</title>
+<!-- Google APIs for Drive & OAuth -->
+<script src="https://accounts.google.com/gsi/client" async defer></script>
+<script src="https://apis.google.com/js/api.js" async defer></script>
+<style>
+  :root {
+    --bg-main: #0f1117;
+    --bg-panel: #181b24;
+    --bg-card: #222634;
+    --bg-input: #12151e;
+    --border: #2e3446;
+    --text-main: #f3f4f6;
+    --text-muted: #9ca3af;
+    --accent: #8b5cf6;
+    --accent-hover: #7c3aed;
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  
+  html, body {
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background-color: var(--bg-main);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+  }
+
+  header {
+    background-color: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    z-index: 20;
+  }
+
+  .header-left {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .profile-box {
+    display: flex;
+    align-items: center;
+    background: var(--bg-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 2px 4px;
+    gap: 4px;
+  }
+
+  .profile-select {
+    background: transparent;
+    color: var(--text-main);
+    border: none;
+    font-size: 13px;
+    font-weight: 600;
+    outline: none;
+    padding: 4px 6px;
+    cursor: pointer;
+  }
+
+  .icon-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    padding: 4px 6px;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    transition: background 0.15s, color 0.15s;
+  }
+  .icon-btn:hover {
+    background: var(--bg-card);
+    color: var(--text-main);
+  }
+  .icon-btn.danger:hover {
+    color: var(--danger);
+  }
+
+  .status-badge {
+    font-size: 11px;
+    padding: 3px 8px;
+    border-radius: 12px;
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    font-weight: 500;
+  }
+
+  .header-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  select.ctrl-select {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 6px 10px;
+    font-size: 12px;
+    outline: none;
+    cursor: pointer;
+  }
+
+  .safety-btn {
+    font-size: 12px;
+    font-weight: 600;
+    padding: 6px 10px;
+    border-radius: 8px;
+    border: none;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .safety-off {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+  .safety-std {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+  }
+
+  .drawers-bar {
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    z-index: 15;
+  }
+
+  details.native-drawer {
+    border-bottom: 1px solid var(--border);
+  }
+  details.native-drawer:last-child {
+    border-bottom: none;
+  }
+  details.native-drawer summary {
+    padding: 8px 14px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: background 0.15s, color 0.15s;
+  }
+  details.native-drawer summary::-webkit-details-marker {
+    display: none;
+  }
+  details.native-drawer summary:hover {
+    background: var(--bg-card);
+    color: var(--text-main);
+  }
+  details.native-drawer[open] summary {
+    color: var(--accent);
+    background: rgba(139, 92, 246, 0.08);
+  }
+
+  .drawer-body {
+    padding: 14px;
+    background: var(--bg-main);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .grid-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  @media (max-width: 768px) {
+    .grid-row {
+      grid-template-columns: 1fr;
+    }
+  }
+
+  .field-box {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .field-box label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+  .field-box input, .field-box textarea {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text-main);
+    padding: 8px 10px;
+    font-size: 12px;
+    outline: none;
+    transition: border 0.15s;
+  }
+  .field-box input:focus, .field-box textarea:focus {
+    border-color: var(--accent);
+  }
+
+  .drawer-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 8px;
+    border-top: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .btn-save {
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    padding: 7px 14px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .btn-save:hover {
+    background: var(--accent-hover);
+  }
+
+  .btn-sec {
+    background: var(--bg-card);
+    color: var(--text-main);
+    border: 1px solid var(--border);
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-sec:hover {
+    background: #2a3042;
+  }
+
+  .btn-blue {
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-blue:hover {
+    background: #1d4ed8;
+  }
+
+  .btn-emerald {
+    background: #059669;
+    color: #fff;
+    border: none;
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .btn-emerald:hover {
+    background: #047857;
+  }
+
+  .btn-danger {
+    background: rgba(239, 68, 68, 0.15);
+    color: #f87171;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    padding: 7px 12px;
+    border-radius: 8px;
+    font-size: 12px;
+    cursor: pointer;
+  }
+  .btn-danger:hover {
+    background: rgba(239, 68, 68, 0.25);
+  }
+
+  /* Drive Card Box */
+  .drive-card {
+    background: #131722;
+    border: 1px solid #2a3146;
+    border-radius: 10px;
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .drive-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid #232838;
+  }
+  .drive-card-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+  }
+  .drive-badge-conn {
+    font-size: 10px;
+    padding: 2px 6px;
+    border-radius: 6px;
+    background: rgba(16, 185, 129, 0.2);
+    color: #34d399;
+    border: 1px solid rgba(16, 185, 129, 0.3);
+  }
+
+  #chat-container {
+    flex: 1;
+    overflow-y: auto;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .message {
+    max-width: 85%;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    line-height: 1.5;
+    font-size: 14px;
+  }
+  .msg-user {
+    align-self: flex-end;
+  }
+  .msg-user .bubble {
+    background: var(--accent);
+    color: #fff;
+    border-radius: 16px 16px 4px 16px;
+    padding: 10px 14px;
+    word-break: break-word;
+  }
+  .msg-model {
+    align-self: flex-start;
+  }
+  .msg-model .bubble {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    border-radius: 16px 16px 16px 4px;
+    padding: 12px 16px;
+    word-break: break-word;
+  }
+  .msg-meta {
+    font-size: 10px;
+    color: var(--text-muted);
+    padding: 0 4px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  details.thought-box {
+    margin-bottom: 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-main);
+  }
+  details.thought-box summary {
+    padding: 6px 10px;
+    font-size: 11px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+  }
+  .thought-content {
+    padding: 8px 10px;
+    font-size: 12px;
+    color: #94a3b8;
+    white-space: pre-wrap;
+    border-top: 1px solid var(--border);
+    max-height: 200px;
+    overflow-y: auto;
+    font-family: monospace;
+  }
+
+  .empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    margin: auto;
+    text-align: center;
+    gap: 10px;
+    padding: 24px;
+    max-width: 500px;
+  }
+  .empty-icon {
+    font-size: 36px;
+  }
+  .empty-title {
+    font-size: 17px;
+    font-weight: 700;
+  }
+  .empty-desc {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  #attachments-bar {
+    display: flex;
+    gap: 8px;
+    padding: 6px 14px;
+    background: var(--bg-panel);
+    overflow-x: auto;
+    border-top: 1px solid var(--border);
+  }
+  .attach-tag {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 8px;
+    font-size: 11px;
+    color: var(--text-main);
+    white-space: nowrap;
+  }
+  .attach-tag span.del {
+    cursor: pointer;
+    color: var(--danger);
+    font-weight: bold;
+  }
+
+  .input-area {
+    background: var(--bg-panel);
+    border-top: 1px solid var(--border);
+    padding: 10px 14px;
+    display: flex;
+    align-items: flex-end;
+    gap: 8px;
+    z-index: 20;
+  }
+  .input-area textarea {
+    flex: 1;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    color: var(--text-main);
+    padding: 10px 12px;
+    font-size: 14px;
+    resize: none;
+    outline: none;
+    max-height: 140px;
+    min-height: 42px;
+  }
+  .input-area textarea:focus {
+    border-color: var(--accent);
+  }
+
+  .action-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    transition: background 0.15s, color 0.15s;
+    flex-shrink: 0;
+  }
+  .action-btn:hover {
+    background: #2c3244;
+    color: var(--text-main);
+  }
+  .action-btn.active {
+    background: var(--danger);
+    color: #fff;
+    animation: pulse 1.5s infinite;
+  }
+  @keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+  }
+
+  #send-btn {
+    width: 42px;
+    height: 42px;
+    border-radius: 12px;
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 18px;
+    flex-shrink: 0;
+    transition: background 0.15s;
+  }
+  #send-btn:hover {
+    background: var(--accent-hover);
+  }
+  #send-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+</style>
+<script src="/_aistudio-iframe.js?v=6634132a"></script></head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="profile-box">
+      <select id="profile-select" class="profile-select" onchange="window.appSwitchProfile(this.value)">
+        <!-- Dynamic profiles -->
+      </select>
+      <button type="button" class="icon-btn" onclick="window.appPromptAddUser()" title="Добавить пользователя">➕</button>
+      <button type="button" class="icon-btn" onclick="window.appPromptRenameUser()" title="Переименовать">✏️</button>
+      <button type="button" class="icon-btn danger" onclick="window.appDeleteCurrentUser()" title="Удалить профиль">🗑️</button>
+    </div>
+    <span class="status-badge" id="js-indicator">🟢 JS Активен</span>
+  </div>
+
+  <div class="header-controls">
+    <select id="model-select" class="ctrl-select" onchange="window.appSaveState()">
+      <option value="gemini-3.8-flash">3.8 Flash (Самые новые)</option>
+      <option value="gemini-3.5-flash-lite">3.5 Flash-Lite (Быстрые)</option>
+      <option value="gemini-3.1-pro">3.1 Pro (Сложные задачи)</option>
+    </select>
+
+    <select id="thinking-select" class="ctrl-select" onchange="window.appSaveState()">
+      <option value="0">Рассуждения: ВЫКЛ</option>
+      <option value="2048">Рассуждения: Быстрые</option>
+      <option value="4096" selected>Рассуждения: Средние</option>
+      <option value="8192">Рассуждения: Глубокие</option>
+    </select>
+
+    <button type="button" id="safety-toggle" class="safety-btn safety-off" onclick="window.appToggleSafety()">
+      🔓 Цензура: OFF
+    </button>
+    
+    <button type="button" class="btn-sec" onclick="window.appClearCurrentChat()" title="Очистить чат">
+      🧹 Очистить
+    </button>
+  </div>
+</header>
+
+<div class="drawers-bar">
+  <!-- Settings Drawer -->
+  <details class="native-drawer" id="drawer-settings">
+    <summary>
+      <span>⚙️ Сервер, API-Ключи и Инструкции (Нажмите, чтобы развернуть)</span>
+      <span>▼</span>
+    </summary>
+    <div class="drawer-body">
+      <div class="grid-row">
+        <div class="field-box">
+          <label>🌐 Сервер / Шлюз обхода (Endpoint):</label>
+          <input type="text" id="api-endpoint" value="https://generativelanguage.googleapis.com" placeholder="https://generativelanguage.googleapis.com">
+        </div>
+        <div class="field-box">
+          <label>🔑 Основной API-ключ Gemini:</label>
+          <input type="password" id="api-key-global" placeholder="AIzaSy...">
+        </div>
+      </div>
+
+      <div class="grid-row">
+        <div class="field-box">
+          <label>🧠 Системная инструкция активного пользователя:</label>
+          <input type="text" id="sys-prompt-active" placeholder="Инструкции для нейросети...">
+        </div>
+        <div class="field-box">
+          <label>🔑 Отдельный ключ для этого профиля (необязательно):</label>
+          <input type="password" id="api-key-profile" placeholder="AIzaSy... (если пусто, используется основной ключ)">
+        </div>
+      </div>
+
+      <div class="field-box" style="grid-column: 1 / -1; margin-top: 4px;">
+        <label>☁️ Google OAuth Client ID (для синхронизации с Google Диском):</label>
+        <input type="text" id="google-client-id-input" placeholder="741926391525-nhumgk2pe4qumnmufpauppq49odrf2qr.apps.googleusercontent.com">
+        <span style="font-size:10px; color:var(--text-muted); margin-top:2px;">Идентификатор веб-клиента из Google Cloud Console (бесплатно, без карты)</span>
+      </div>
+
+      <div class="drawer-actions">
+        <span style="font-size:11px; color:var(--text-muted);">Ключи сохраняются локально в вашем браузере</span>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn-sec" onclick="window.appExportBackup()">💾 Бэкап JSON</button>
+          <button type="button" class="btn-save" onclick="window.appSaveAndCloseSettings()">Сохранить и свернуть ▲</button>
+        </div>
+      </div>
+    </div>
+  </details>
+
+  <!-- Knowledge Base Drawer with Google Drive Sync -->
+  <details class="native-drawer" id="drawer-kb" open>
+    <summary>
+      <span id="kb-summary-title">📂 База знаний и синхронизация Google Диска</span>
+      <span>▼</span>
+    </summary>
+    <div class="drawer-body">
+      <!-- Google Drive Synchronization Card -->
+      <div class="drive-card">
+        <div class="drive-card-header">
+          <div class="drive-card-title">
+            <span>☁️ Синхронизация с Google Диском</span>
+            <span id="drive-auth-badge" style="display:none;" class="drive-badge-conn">Подключено</span>
+          </div>
+          <div id="drive-auth-actions">
+            <button type="button" id="drive-login-btn" class="btn-blue" onclick="window.appGoogleSignIn()">
+              Войти через Google
+            </button>
+            <button type="button" id="drive-logout-btn" class="btn-sec" style="display:none;" onclick="window.appGoogleSignOut()">
+              Выйти из Google
+            </button>
+          </div>
+        </div>
+
+        <div style="font-size:11px; color:var(--text-muted); line-height: 1.4;">
+          🔒 Полная приватность: каждый пользователь подключает <strong>свой собственный Google Диск</strong>. Никто другой не имеет доступа к вашей памяти и файлам.
+        </div>
+
+        <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; padding-top:6px; border-top:1px solid #232838;">
+          <div style="font-size:12px; color:var(--text-main); display:flex; align-items:center; gap:6px;">
+            <span>📁</span>
+            <span id="drive-folder-status">Папка Google Диска ещё не выбрана</span>
+          </div>
+
+          <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn-blue" onclick="window.appConnectForGeminiFolder()" title="Автоматически создать или подключить папку 'For Gemini' на Google Диске">
+              ☁️ Папка «For Gemini»
+            </button>
+            <button type="button" class="btn-sec" onclick="window.appPickAnyDriveFolder()" title="Выбрать любую папку через окно выбора Google Drive">
+              📂 Выбрать другую папку
+            </button>
+            <button type="button" id="drive-sync-btn" class="btn-emerald" style="display:none;" onclick="window.appSyncFromDrive()" title="Заново прочитать все файлы из папки Google Диска">
+              🔄 Синхронизировать
+            </button>
+            <button type="button" id="drive-save-btn" class="btn-save" style="display:none;" onclick="window.appSaveKBToDrive()" title="Сохранить текущую базу памяти в файл Markdown на Google Диске">
+              💾 Сохранить в Диск
+            </button>
+          </div>
+        </div>
+
+        <div id="drive-msg-box" style="display:none; font-size:11px; color:#93c5fd; padding:6px 10px; background:#1e293b; border-radius:6px; border:1px solid #334155;"></div>
+
+        <!-- Folder Files Explorer & Targeted Update (In-place append to avoid file sprawl) -->
+        <div id="drive-files-container" style="display:none; margin-top:10px; padding-top:8px; border-top:1px solid #232838;">
+          <div style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:6px; margin-bottom:6px;">
+            <button type="button" class="btn-sec" style="font-size:11px; padding:4px 8px;" onclick="window.appToggleDriveFilesList()">
+              📋 Документы в папке (<span id="drive-files-count">0</span>) ▼
+            </button>
+            <span style="font-size:10px; color:var(--text-muted);">
+              💡 Можно дописывать заметки прямо в существующие файлы (без создания новых)
+            </span>
+          </div>
+          <div id="drive-files-list" style="display:none; max-height:180px; overflow-y:auto; background:#0e111a; border:1px solid #2a3044; border-radius:6px; padding:4px; margin-bottom:8px;"></div>
+
+          <div id="drive-append-box" style="display:none; background:#141824; border:1px solid #6366f1; border-radius:8px; padding:8px; margin-top:6px;">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+              <span style="font-size:12px; font-weight:600; color:#fff;">
+                ✍️ Добавление в: <span id="drive-append-filename" style="color:#a5b4fc; font-family:monospace;"></span>
+              </span>
+              <button type="button" class="icon-btn" onclick="window.appCloseAppendBox()" style="font-size:12px;">✕</button>
+            </div>
+            <div style="display:flex; gap:12px; font-size:11px; color:#cbd5e1; margin-bottom:6px;">
+              <label style="cursor:pointer;"><input type="radio" name="htmlAppendMode" id="appendModeAdd" value="append" checked> ➕ Дописать в конец файла</label>
+              <label style="cursor:pointer;"><input type="radio" name="htmlAppendMode" id="appendModeOverwrite" value="overwrite"> 🔄 Перезаписать файл</label>
+            </div>
+            <textarea id="drive-append-textarea" rows="3" style="width:100%; font-family:monospace; font-size:11px; background:#0b0d14; border:1px solid #334155; color:#f8fafc; border-radius:4px; padding:6px; margin-bottom:6px;" placeholder="Введите новые данные или заметки для сохранения..."></textarea>
+            <div style="display:flex; justify-content:flex-end; gap:6px;">
+              <button type="button" class="btn-sec" onclick="window.appCloseAppendBox()" style="font-size:11px;">Отмена</button>
+              <button type="button" class="btn-emerald" onclick="window.appSubmitAppendToDriveFile()" style="font-size:11px;">💾 Записать в файл на Диске</button>
+            </div>
+          </div>
+        </div>
+
+        <details style="margin-top:8px; font-size:11px; background:#0b0f19; padding:8px 12px; border-radius:6px; border:1px solid #1e293b;">
+          <summary style="cursor:pointer; color:#60a5fa; font-weight:600;">
+            💡 Ошибка «origin_mismatch»? Как включить Google Диск для вашего GitHub сайта за 1 минуту
+          </summary>
+          <div style="margin-top:8px; color:#cbd5e1; line-height:1.6;">
+            <p style="margin:0 0 6px 0;">Google строго проверяет адреса сайтов (Origin) для защиты ваших файлов. Чтобы вход заработал на GitHub Pages (<code>https://wolfofthebeam.github.io</code>):</p>
+            <ol style="margin:0 0 8px 18px; padding:0;">
+              <li>Перейдите в консоль Google: <a href="https://console.cloud.google.com/apis/credentials?project=gen-lang-client-0586926871" target="_blank" rel="noopener" style="color:#38bdf8; text-decoration:underline; font-weight:bold;">Google Cloud Credentials (Кликните сюда)</a></li>
+              <li>В списке <strong>«Идентификаторы клиентов OAuth 2.0»</strong> кликните по вашему клиенту (Web Client).</li>
+              <li>В блоке <strong>«Разрешенные источники JavaScript» (Authorized JavaScript origins)</strong> нажмите <strong>«+ ДОБАВИТЬ URI»</strong>.</li>
+              <li>Вставьте адрес вашего сайта:<br><code style="background:#1e293b; color:#4ade80; padding:2px 6px; border-radius:4px; font-weight:bold;">https://wolfofthebeam.github.io</code> (строго без слэша <code>/</code> в конце!)</li>
+              <li>Нажмите синюю кнопку <strong>«Сохранить»</strong> внизу.</li>
+            </ol>
+            <div style="color:#94a3b8; font-size:10px;">
+              ✨ <em>Это бесплатно, без привязки карт. Через 1-2 минуты обновите эту страницу — вход сразу откроет ваш Google Диск!</em>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <!-- Manual Files & Text Base -->
+      <div class="field-box">
+        <label>📥 Ручная загрузка файлов (.md, .txt, .json, .csv):</label>
+        <input type="file" id="kb-file-input" multiple accept=".md,.txt,.json,.csv" onchange="window.appImportKBFiles(this.files)">
+      </div>
+
+      <div class="field-box">
+        <label>📘 Текст активной базы знаний (передаётся модели в контексте):</label>
+        <textarea id="kb-content-area" rows="6" style="font-family:monospace; font-size:12px;" placeholder="База знаний пуста. Подключите Google Диск выше или загрузите локальные файлы..." oninput="window.appUpdateKBStats()"></textarea>
+      </div>
+
+      <div class="drawer-actions">
+        <span id="kb-size-info" style="font-size:11px; color:var(--text-muted);">Объём базы: 0 симв.</span>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn-danger" onclick="window.appClearKB()">🗑️ Очистить базу</button>
+          <button type="button" class="btn-sec" onclick="window.appExportKB()">📤 Скачать .md</button>
+          <button type="button" class="btn-save" onclick="window.appSaveAndCloseKB()">Принять и свернуть ▲</button>
+        </div>
+      </div>
+    </div>
+  </details>
+</div>
+
+<div id="chat-container">
+  <!-- Dynamic chat messages -->
+</div>
+
+<div id="attachments-bar"></div>
+
+<div class="input-area">
+  <label class="action-btn" title="Камера">
+    📷
+    <input type="file" accept="image/*" capture="environment" style="display:none" onchange="window.appHandleFiles(this.files)">
+  </label>
+  <label class="action-btn" title="Файлы">
+    📎
+    <input type="file" multiple style="display:none" onchange="window.appHandleFiles(this.files)">
+  </label>
+
+  <textarea id="user-input" rows="1" placeholder="Введите сообщение..." onkeydown="window.appHandleKey(event)"></textarea>
+  <button type="button" class="action-btn" id="mic-btn" onclick="window.appToggleVoice()" title="Голосовой ввод">🎤</button>
+  <input type="file" id="voice-record-input" accept="audio/*" capture="user" style="display:none" onchange="window.appHandleVoiceRecord(this.files)">
+  <button type="button" id="send-btn" onclick="window.appSendMessage()" title="Отправить">➤</button>
+</div>
+
+<script>
+window.onerror = function(msg, url, line) {
+  var ind = document.getElementById('js-indicator');
+  if (ind) {
+    ind.style.background = 'rgba(239, 68, 68, 0.3)';
+    ind.style.color = '#fca5a5';
+    ind.textContent = 'Ошибка JS: ' + msg;
+  }
+};
+
+var SafeStore = {
+  mem: {},
+  get: function(key) {
+    try {
+      var v = window.localStorage.getItem(key);
+      return v !== null ? v : (this.mem[key] || null);
+    } catch (e) {
+      return this.mem[key] || null;
+    }
+  },
+  set: function(key, val) {
+    this.mem[key] = String(val);
+    try { window.localStorage.setItem(key, String(val)); } catch (e) {}
+  },
+  remove: function(key) {
+    delete this.mem[key];
+    try { window.localStorage.removeItem(key); } catch (e) {}
+  }
+};
+
+var DEFAULT_SYS_PROMPT = "Ты — умный, тактичный и честный собеседник и персональный помощник. Общайся прямо, точно, глубоко и по существу.";
+
+// Google OAuth Configuration
+var DEFAULT_GOOGLE_CLIENT_ID = "741926391525-nhumgk2pe4qumnmufpauppq49odrf2qr.apps.googleusercontent.com";
+function getGoogleClientId() {
+  var custom = (SafeStore.get('gm_google_client_id') || '').trim();
+  return custom || DEFAULT_GOOGLE_CLIENT_ID;
+}
+var GOOGLE_SCOPES = "https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/documents";
+
+var driveState = {
+  token: SafeStore.get('gm_drive_token') || '',
+  userEmail: SafeStore.get('gm_drive_email') || '',
+  folder: null,
+  tokenClient: null
+};
+
+try {
+  var savedFolder = SafeStore.get('gm_drive_folder');
+  if (savedFolder) driveState.folder = JSON.parse(savedFolder);
+} catch (e) {}
+
+// Dynamic State
+var state = {
+  currentProfileId: SafeStore.get('gm_html_active_prof_id') || '',
+  globalApiKey: SafeStore.get('gm_global_key') || '',
+  safetyOff: SafeStore.get('gm_safety_off') !== 'false',
+  model: SafeStore.get('gm_model') || 'gemini-3.8-flash',
+  thinkingBudget: parseInt(SafeStore.get('gm_thinking') || '4096', 10),
+  endpoint: SafeStore.get('gm_endpoint') || 'https://generativelanguage.googleapis.com',
+  profiles: []
+};
+
+// Load profiles
+try {
+  var savedProfs = SafeStore.get('gm_html_profiles_v2');
+  if (savedProfs) {
+    state.profiles = JSON.parse(savedProfs);
+    for (var i = 0; i < state.profiles.length; i++) {
+      var p = state.profiles[i];
+      if (p.kb && (p.kb.indexOf('Рокет Телеком') !== -1 || p.kb.indexOf('Rocket Telecom') !== -1)) {
+        p.kb = '';
+      }
+    }
+  }
+} catch (e) {}
+
+if (!Array.isArray(state.profiles)) {
+  state.profiles = [];
+}
+
+var stagedFiles = [];
+
+function escapeHtml(str) {
+  return String(str)
+    .split('&').join('&amp;')
+    .split('<').join('&lt;')
+    .split('>').join('&gt;')
+    .split('"').join('&quot;');
+}
+
+function formatText(text) {
+  var safe = escapeHtml(text || '');
+  return safe.split('\n').join('<br>');
+}
+
+function normalizeEndpoint(raw) {
+  var clean = String(raw || '').trim();
+  while (clean.endsWith('/')) {
+    clean = clean.slice(0, -1);
+  }
+  if (!clean) return 'https://generativelanguage.googleapis.com';
+  if (clean.indexOf('http://') !== 0 && clean.indexOf('https://') !== 0) {
+    clean = 'https://' + clean;
+  }
+  return clean;
+}
+
+function getActiveProfile() {
+  if (!state.profiles.length) return null;
+  for (var i = 0; i < state.profiles.length; i++) {
+    if (state.profiles[i].id === state.currentProfileId) {
+      return state.profiles[i];
+    }
+  }
+  return state.profiles[0];
+}
+
+window.appSaveState = function() {
+  state.model = document.getElementById('model-select').value;
+  state.thinkingBudget = parseInt(document.getElementById('thinking-select').value, 10);
+  state.endpoint = normalizeEndpoint(document.getElementById('api-endpoint').value);
+  state.globalApiKey = document.getElementById('api-key-global').value.trim();
+
+  var prof = getActiveProfile();
+  if (prof) {
+    prof.apiKey = document.getElementById('api-key-profile').value.trim();
+    prof.sysPrompt = document.getElementById('sys-prompt-active').value;
+    prof.kb = document.getElementById('kb-content-area').value;
+  }
+
+  SafeStore.set('gm_global_key', state.globalApiKey);
+  SafeStore.set('gm_html_active_prof_id', state.currentProfileId);
+  SafeStore.set('gm_safety_off', state.safetyOff);
+  SafeStore.set('gm_model', state.model);
+  SafeStore.set('gm_thinking', state.thinkingBudget);
+  SafeStore.set('gm_endpoint', state.endpoint);
+  SafeStore.set('gm_html_profiles_v2', JSON.stringify(state.profiles));
+
+  var cidInput = document.getElementById('google-client-id-input');
+  if (cidInput) {
+    var val = cidInput.value.trim();
+    SafeStore.set('gm_google_client_id', val);
+    driveState.tokenClient = null; // Re-initialize with new client ID on next login
+  }
+};
+
+window.appPromptAddUser = function() {
+  var name = prompt('Введите имя нового пользователя:');
+  if (name && name.trim()) {
+    var newId = 'prof_' + Date.now();
+    state.profiles.push({
+      id: newId,
+      name: name.trim(),
+      apiKey: '',
+      sysPrompt: DEFAULT_SYS_PROMPT,
+      kb: '', // Чистая база по умолчанию
+      history: []
+    });
+    state.currentProfileId = newId;
+    window.appSaveState();
+    window.appUpdateUI();
+  }
+};
+
+window.appPromptRenameUser = function() {
+  var prof = getActiveProfile();
+  if (!prof) return alert('Пользователь не выбран!');
+  var newName = prompt('Новое имя пользователя:', prof.name);
+  if (newName && newName.trim()) {
+    prof.name = newName.trim();
+    window.appSaveState();
+    window.appUpdateUI();
+  }
+};
+
+window.appDeleteCurrentUser = function() {
+  var prof = getActiveProfile();
+  if (!prof) return;
+  if (confirm('Удалить пользователя «' + prof.name + '» и всю его историю?')) {
+    state.profiles = state.profiles.filter(function(p) { return p.id !== prof.id; });
+    state.currentProfileId = state.profiles.length ? state.profiles[0].id : '';
+    window.appSaveState();
+    window.appUpdateUI();
+  }
+};
+
+window.appSwitchProfile = function(id) {
+  var prof = getActiveProfile();
+  if (prof) {
+    prof.sysPrompt = document.getElementById('sys-prompt-active').value;
+    prof.kb = document.getElementById('kb-content-area').value;
+  }
+  state.currentProfileId = id;
+  window.appUpdateUI();
+};
+
+window.appUpdateKBStats = function() {
+  var val = document.getElementById('kb-content-area').value || '';
+  document.getElementById('kb-size-info').textContent = 'Объём базы: ' + val.length + ' симв. (~' + Math.round(val.length / 3.5) + ' токенов)';
+};
+
+window.appClearKB = function() {
+  var prof = getActiveProfile();
+  if (!prof) return;
+  if (confirm('Полностью очистить базу знаний для пользователя «' + prof.name + '»?')) {
+    prof.kb = '';
+    document.getElementById('kb-content-area').value = '';
+    window.appUpdateKBStats();
+    window.appSaveState();
+  }
+};
+
+window.appClearCurrentChat = function() {
+  var prof = getActiveProfile();
+  if (!prof) return;
+  if (confirm('Очистить историю чата для пользователя «' + prof.name + '»?')) {
+    prof.history = [];
+    window.appSaveState();
+    window.appRenderChat();
+  }
+};
+
+// ==========================================
+// GOOGLE DRIVE & OAUTH INTEGRATION
+// ==========================================
+function setDriveMsg(text) {
+  var box = document.getElementById('drive-msg-box');
+  if (!box) return;
+  if (!text) {
+    box.style.display = 'none';
+    box.textContent = '';
+  } else {
+    box.style.display = 'block';
+    box.textContent = text;
+  }
+}
+
+function initGoogleAuthClient() {
+  if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+    try {
+      var currentCid = getGoogleClientId();
+      driveState.tokenClient = window.google.accounts.oauth2.initTokenClient({
+        client_id: currentCid,
+        scope: GOOGLE_SCOPES,
+        error_callback: function(err) {
+          console.error('Google Auth error:', err);
+          var errMsg = 'Ошибка авторизации Google';
+          if (err && (err.type === 'origin_mismatch' || String(err).indexOf('origin_mismatch') !== -1)) {
+            errMsg = '⚠️ Ошибка origin_mismatch: адрес «' + window.location.origin + '» не добавлен в «Разрешенные источники JavaScript» в Google Cloud Console. Откройте инструкцию ниже.';
+          }
+          setDriveMsg(errMsg);
+        },
+        callback: function(tokenResponse) {
+          if (tokenResponse.error !== undefined) {
+            if (tokenResponse.error === 'origin_mismatch') {
+              var msg = '⚠️ Ошибка origin_mismatch: Google требует добавить адрес «' + window.location.origin + '» в список «Разрешенные источники JavaScript» в Google Cloud Console. Пожалуйста, откройте инструкцию в блоке Диска ниже.';
+              setDriveMsg(msg);
+              alert(msg);
+            } else {
+              setDriveMsg('Ошибка Google: ' + tokenResponse.error);
+              alert('Ошибка авторизации Google: ' + tokenResponse.error);
+            }
+            return;
+          }
+          driveState.token = tokenResponse.access_token;
+          SafeStore.set('gm_drive_token', driveState.token);
+          setDriveMsg('Авторизация успешна! Получение профиля...');
+          
+          // Fetch user info
+          fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: 'Bearer ' + driveState.token }
+          })
+          .then(function(r) { return r.json(); })
+          .then(function(u) {
+            driveState.userEmail = u.email || 'Google User';
+            SafeStore.set('gm_drive_email', driveState.userEmail);
+            window.appUpdateDriveUI();
+            setDriveMsg('✅ Подключено к Google Диску (' + driveState.userEmail + ')');
+          })
+          .catch(function() {
+            driveState.userEmail = 'Google User';
+            window.appUpdateDriveUI();
+          });
+        }
+      });
+    } catch (e) {
+      console.error('Failed to initTokenClient:', e);
+    }
+  }
+}
+
+window.appGoogleSignIn = function() {
+  if (!driveState.tokenClient) {
+    initGoogleAuthClient();
+  }
+  if (!driveState.tokenClient) {
+    alert('Библиотека Google Identity ещё загружается. Попробуйте через 2 секунды.');
+    return;
+  }
+  driveState.tokenClient.requestAccessToken({ prompt: 'consent' });
+};
+
+window.appGoogleSignOut = function() {
+  driveState.token = '';
+  driveState.userEmail = '';
+  SafeStore.remove('gm_drive_token');
+  SafeStore.remove('gm_drive_email');
+  window.appUpdateDriveUI();
+};
+
+window.appUpdateDriveUI = function() {
+  var badge = document.getElementById('drive-auth-badge');
+  var loginBtn = document.getElementById('drive-login-btn');
+  var logoutBtn = document.getElementById('drive-logout-btn');
+  var folderStatus = document.getElementById('drive-folder-status');
+  var syncBtn = document.getElementById('drive-sync-btn');
+  var saveBtn = document.getElementById('drive-save-btn');
+
+  if (driveState.token) {
+    badge.style.display = 'inline-block';
+    badge.textContent = 'Подключено: ' + (driveState.userEmail || 'Google User');
+    loginBtn.style.display = 'none';
+    logoutBtn.style.display = 'inline-flex';
+  } else {
+    badge.style.display = 'none';
+    loginBtn.style.display = 'inline-flex';
+    logoutBtn.style.display = 'none';
+  }
+
+  if (driveState.folder) {
+    folderStatus.innerHTML = 'Подключена папка: <strong style="color:var(--success);">«' + escapeHtml(driveState.folder.name) + '»</strong>';
+    syncBtn.style.display = 'inline-flex';
+    saveBtn.style.display = 'inline-flex';
+  } else {
+    folderStatus.textContent = 'Папка Google Диска ещё не выбрана';
+    syncBtn.style.display = 'none';
+    saveBtn.style.display = 'none';
+  }
+  if (window.appRenderDriveFilesList) window.appRenderDriveFilesList();
+};
+
+// Auto-create or connect 'For Gemini' folder
+window.appConnectForGeminiFolder = async function() {
+  if (!driveState.token) {
+    window.appGoogleSignIn();
+    return;
+  }
+  try {
+    setDriveMsg('Поиск или создание папки «For Gemini» на вашем Диске...');
+    var query = encodeURIComponent("name = 'For Gemini' and mimeType = 'application/vnd.google-apps.folder' and trashed = false");
+    var searchUrl = "https://www.googleapis.com/drive/v3/files?q=" + query + "&fields=files(id,name)&pageSize=1";
+    
+    var searchRes = await fetch(searchUrl, {
+      headers: { Authorization: "Bearer " + driveState.token }
+    });
+    var data = await searchRes.json();
+    var folder = null;
+    if (data.files && data.files.length > 0) {
+      folder = { id: data.files[0].id, name: data.files[0].name };
+    } else {
+      var createRes = await fetch('https://www.googleapis.com/drive/v3/files', {
+        method: 'POST',
+        headers: {
+          Authorization: 'Bearer ' + driveState.token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: 'For Gemini',
+          mimeType: 'application/vnd.google-apps.folder'
+        })
+      });
+      var created = await createRes.json();
+      folder = { id: created.id, name: created.name || 'For Gemini' };
+    }
+
+    driveState.folder = folder;
+    SafeStore.set('gm_drive_folder', JSON.stringify(folder));
+    window.appUpdateDriveUI();
+    setDriveMsg('Папка «For Gemini» подключена! Чтение файлов...');
+    await window.appSyncFromDrive();
+  } catch (e) {
+    alert('Ошибка подключения «For Gemini»: ' + e.message);
+    setDriveMsg('Ошибка: ' + e.message);
+  }
+};
+
+// Pick folder via Google Picker
+window.appPickAnyDriveFolder = function() {
+  if (!driveState.token) {
+    window.appGoogleSignIn();
+    return;
+  }
+  if (!window.gapi) {
+    alert('GAPI загружается, попробуйте через секунду');
+    return;
+  }
+  window.gapi.load('picker', {
+    callback: function() {
+      var view = new google.picker.DocsView(google.picker.ViewId.FOLDERS)
+        .setMimeTypes('application/vnd.google-apps.folder')
+        .setSelectFolderEnabled(true);
+      var docsView = new google.picker.DocsView(google.picker.ViewId.DOCS)
+        .setIncludeFolders(true)
+        .setSelectFolderEnabled(true);
+
+      var picker = new google.picker.PickerBuilder()
+        .addView(view)
+        .addView(docsView)
+        .setOAuthToken(driveState.token)
+        .setTitle('Выберите папку или файл памяти для Gemini')
+        .setCallback(function(data) {
+          if (data.action === google.picker.Action.PICKED) {
+            var doc = data.docs[0];
+            if (doc) {
+              driveState.folder = { id: doc.id, name: doc.name || 'Папка Google Диска' };
+              SafeStore.set('gm_drive_folder', JSON.stringify(driveState.folder));
+              window.appUpdateDriveUI();
+              setDriveMsg('Выбрана папка: «' + doc.name + '». Нажмите «Синхронизировать».');
+            }
+          }
+        })
+        .build();
+      picker.setVisible(true);
+    }
+  });
+};
+
+// Active folder files cache in HTML
+var driveFolderFiles = [];
+var currentAppendTarget = null;
+
+// Retrieve all files in folder with full pagination
+window.appFetchFolderFiles = async function(folderId) {
+  var all = [];
+  var pageToken = '';
+  do {
+    var query = encodeURIComponent("'" + folderId + "' in parents and trashed = false");
+    var listUrl = "https://www.googleapis.com/drive/v3/files?q=" + query + "&fields=nextPageToken,files(id,name,mimeType,modifiedTime,size)&pageSize=100&orderBy=name";
+    if (pageToken) listUrl += "&pageToken=" + encodeURIComponent(pageToken);
+    var res = await fetch(listUrl, { headers: { Authorization: "Bearer " + driveState.token } });
+    if (!res.ok) throw new Error('Ошибка ' + res.status);
+    var data = await res.json();
+    if (data.files && data.files.length) all = all.concat(data.files);
+    pageToken = data.nextPageToken || '';
+  } while (pageToken);
+  return all;
+};
+
+window.appRenderDriveFilesList = function() {
+  var countEl = document.getElementById('drive-files-count');
+  var listEl = document.getElementById('drive-files-list');
+  var container = document.getElementById('drive-files-container');
+  if (countEl) countEl.textContent = driveFolderFiles.length;
+  if (!container) return;
+  container.style.display = driveState.folder ? 'block' : 'none';
+
+  if (!listEl) return;
+  if (!driveFolderFiles.length) {
+    listEl.innerHTML = '<div style="color:var(--text-muted); padding:6px; font-size:11px;">Нажмите «🔄 Синхронизировать», чтобы прочитать файлы.</div>';
+    return;
+  }
+
+  var html = '';
+  for (var i = 0; i < driveFolderFiles.length; i++) {
+    var f = driveFolderFiles[i];
+    var isDoc = f.mimeType === 'application/vnd.google-apps.document';
+    var isMd = f.name.endsWith('.md');
+    var badge = isDoc ? '<span style="background:#1e3a8a; color:#93c5fd; padding:1px 4px; border-radius:3px; font-size:9px;">Doc</span>'
+      : isMd ? '<span style="background:#064e3b; color:#6ee7b7; padding:1px 4px; border-radius:3px; font-size:9px;">MD</span>'
+      : '<span style="background:#3b0764; color:#d8b4fe; padding:1px 4px; border-radius:3px; font-size:9px;">Файл</span>';
+
+    html += '<div style="display:flex; align-items:center; justify-content:space-between; gap:6px; padding:4px 6px; border-bottom:1px solid #1e2334; font-size:11px;">' +
+      '<div style="display:flex; align-items:center; gap:6px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">' +
+      badge + '<span style="color:#e2e8f0; font-weight:500;" title="' + f.name + '">' + f.name + '</span>' +
+      '</div>' +
+      '<button type="button" class="btn-sec" style="font-size:10px; padding:2px 6px; flex-shrink:0;" onclick="window.appOpenAppendBox(' + i + ')">✍️ Дописать</button>' +
+      '</div>';
+  }
+  listEl.innerHTML = html;
+};
+
+window.appToggleDriveFilesList = function() {
+  var listEl = document.getElementById('drive-files-list');
+  if (listEl) {
+    listEl.style.display = listEl.style.display === 'none' ? 'block' : 'none';
+  }
+};
+
+window.appOpenAppendBox = function(idx) {
+  var f = driveFolderFiles[idx];
+  if (!f) return;
+  currentAppendTarget = f;
+  var box = document.getElementById('drive-append-box');
+  var fn = document.getElementById('drive-append-filename');
+  var ta = document.getElementById('drive-append-textarea');
+  if (fn) fn.textContent = f.name;
+  if (ta) ta.value = '';
+  if (box) box.style.display = 'block';
+};
+
+window.appCloseAppendBox = function() {
+  currentAppendTarget = null;
+  var box = document.getElementById('drive-append-box');
+  if (box) box.style.display = 'none';
+};
+
+window.appSubmitAppendToDriveFile = async function() {
+  if (!currentAppendTarget || !driveState.token) return;
+  var ta = document.getElementById('drive-append-textarea');
+  var text = (ta ? ta.value : '').trim();
+  if (!text) return alert('Введите текст для сохранения!');
+  
+  var isAppend = document.getElementById('appendModeAdd') ? document.getElementById('appendModeAdd').checked : true;
+  var file = currentAppendTarget;
+
+  try {
+    setDriveMsg('Запись в «' + file.name + '»...');
+    if (file.mimeType === 'application/vnd.google-apps.document') {
+      var docsUrl = "https://docs.googleapis.com/v1/documents/" + file.id + ":batchUpdate";
+      var res = await fetch(docsUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: "Bearer " + driveState.token,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          requests: [{ insertText: { endOfSegmentLocation: {}, text: (isAppend ? "\n\n" : "") + text } }]
+        })
+      });
+      if (!res.ok) {
+        var err = await res.json().catch(function() { return {}; });
+        throw new Error(err.error?.message || ('HTTP ' + res.status));
+      }
+    } else {
+      var bodyContent = text;
+      if (isAppend) {
+        var curRes = await fetch("https://www.googleapis.com/drive/v3/files/" + file.id + "?alt=media", {
+          headers: { Authorization: "Bearer " + driveState.token }
+        });
+        if (curRes.ok) {
+          var curText = await curRes.text();
+          bodyContent = curText ? (curText.trim() + "\n\n" + text) : text;
+        }
+      }
+      var patchUrl = "https://www.googleapis.com/upload/drive/v3/files/" + file.id + "?uploadType=media";
+      var patchRes = await fetch(patchUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization: "Bearer " + driveState.token,
+          'Content-Type': 'text/markdown; charset=UTF-8'
+        },
+        body: bodyContent
+      });
+      if (!patchRes.ok) throw new Error('HTTP ' + patchRes.status);
+    }
+
+    var successMsg = isAppend ? '✅ Текст успешно добавлен в конец «' + file.name + '»!' : '✅ Файл «' + file.name + '» обновлён!';
+    setDriveMsg(successMsg);
+    alert(successMsg);
+    window.appCloseAppendBox();
+    // Auto re-sync
+    await window.appSyncFromDrive();
+  } catch (e) {
+    alert('Ошибка записи в файл: ' + e.message);
+    setDriveMsg('Ошибка: ' + e.message);
+  }
+};
+
+// Read files from connected Google Drive folder with pagination and live progress
+window.appSyncFromDrive = async function() {
+  if (!driveState.folder || !driveState.token) return;
+  var prof = getActiveProfile();
+  if (!prof) return alert('Сначала добавьте пользователя!');
+  
+  try {
+    setDriveMsg('Сканирование документов из «' + driveState.folder.name + '»...');
+    var files = await window.appFetchFolderFiles(driveState.folder.id);
+    driveFolderFiles = files;
+    window.appRenderDriveFilesList();
+
+    if (files.length === 0) {
+      setDriveMsg('В папке «' + driveState.folder.name + '» пока нет файлов.');
+      return;
+    }
+
+    // Sort naturally: 00_, 01_, etc.
+    files.sort(function(a, b) {
+      return a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' });
+    });
+
+    var chunks = [];
+    for (var i = 0; i < files.length; i++) {
+      var f = files[i];
+      setDriveMsg('Чтение документов (' + (i + 1) + '/' + files.length + '): ' + f.name + '...');
+      try {
+        if (f.mimeType === 'application/vnd.google-apps.document') {
+          var expRes = await fetch("https://www.googleapis.com/drive/v3/files/" + f.id + "/export?mimeType=text/plain", {
+            headers: { Authorization: "Bearer " + driveState.token }
+          });
+          if (expRes.ok) chunks.push("=== [ФАЙЛ (Google Doc): " + f.name + "] ===\n" + (await expRes.text()).trim());
+        } else if (f.mimeType === 'application/vnd.google-apps.spreadsheet') {
+          var sheetRes = await fetch("https://www.googleapis.com/drive/v3/files/" + f.id + "/export?mimeType=text/csv", {
+            headers: { Authorization: "Bearer " + driveState.token }
+          });
+          if (sheetRes.ok) chunks.push("=== [ФАЙЛ (Таблица): " + f.name + "] ===\n" + (await sheetRes.text()).trim());
+        } else if (f.mimeType.startsWith('text/') || f.name.endsWith('.md') || f.name.endsWith('.txt') || f.name.endsWith('.json') || f.name.endsWith('.csv')) {
+          var mediaRes = await fetch("https://www.googleapis.com/drive/v3/files/" + f.id + "?alt=media", {
+            headers: { Authorization: "Bearer " + driveState.token }
+          });
+          if (mediaRes.ok) chunks.push("=== [ФАЙЛ: " + f.name + "] ===\n" + (await mediaRes.text()).trim());
+        } else if (f.name.endsWith('.docx')) {
+          chunks.push("=== [ФАЙЛ: " + f.name + "] ===\n[Документ Word: " + f.name + ". Откройте его на Google Диске и выберите «Сохранить как Google Документ» для чтения текста]");
+        }
+      } catch (err) {}
+    }
+
+    var content = chunks.join('\n\n');
+    prof.kb = content;
+    document.getElementById('kb-content-area').value = content;
+    window.appUpdateKBStats();
+    window.appSaveState();
+    setDriveMsg('✅ Синхронизировано из «' + driveState.folder.name + '» (' + chunks.length + ' файлов, ' + content.length + ' симв.)');
+  } catch (e) {
+    alert('Ошибка чтения с Диска: ' + e.message);
+    setDriveMsg('Ошибка: ' + e.message);
+  }
+};
+
+// Save current memory base to Google Drive folder as Markdown (In-place update to prevent duplicates)
+window.appSaveKBToDrive = async function() {
+  if (!driveState.folder || !driveState.token) return;
+  var prof = getActiveProfile();
+  if (!prof) return;
+
+  var fileName = "For_Gemini_" + prof.name + "_Memory.md";
+  if (!confirm("Сохранить текущую базу знаний в файл «" + fileName + "» внутри папки «" + driveState.folder.name + "» на Google Диске?\n\nЕсли файл уже существует, он будет обновлён на месте без дублирования.")) {
+    return;
+  }
+
+  try {
+    setDriveMsg('Сохранение файла на Google Диск...');
+    
+    // Check if file already exists in folder
+    var existingFiles = await window.appFetchFolderFiles(driveState.folder.id);
+    var existing = null;
+    for (var i = 0; i < existingFiles.length; i++) {
+      if (existingFiles[i].name.toLowerCase() === fileName.toLowerCase()) {
+        existing = existingFiles[i];
+        break;
+      }
+    }
+
+    if (existing) {
+      // In-place PATCH update
+      var patchUrl = "https://www.googleapis.com/upload/drive/v3/files/" + existing.id + "?uploadType=media";
+      var patchRes = await fetch(patchUrl, {
+        method: 'PATCH',
+        headers: {
+          Authorization: "Bearer " + driveState.token,
+          'Content-Type': 'text/markdown; charset=UTF-8'
+        },
+        body: prof.kb || ''
+      });
+      if (!patchRes.ok) throw new Error('HTTP ' + patchRes.status);
+      setDriveMsg('✅ Файл «' + fileName + '» успешно обновлён на месте (без дубликатов)!');
+      alert('Файл «' + fileName + '» успешно обновлён на месте в папке «' + driveState.folder.name + '»!');
+    } else {
+      // Create new file
+      var metadata = {
+        name: fileName,
+        mimeType: 'text/markdown',
+        parents: [driveState.folder.id]
+      };
+      var form = new FormData();
+      form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+      form.append('file', new Blob([prof.kb || ''], { type: 'text/markdown; charset=UTF-8' }));
+
+      var res = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
+        method: 'POST',
+        headers: { Authorization: 'Bearer ' + driveState.token },
+        body: form
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      setDriveMsg('✅ Создан файл «' + fileName + '» на вашем Google Диске!');
+      alert('Файл «' + fileName + '» успешно сохранён в папку «' + driveState.folder.name + '» на Google Диске!');
+    }
+
+    // Refresh file list
+    driveFolderFiles = await window.appFetchFolderFiles(driveState.folder.id);
+    window.appRenderDriveFilesList();
+  } catch (e) {
+    alert('Ошибка сохранения на Диск: ' + e.message);
+    setDriveMsg('Ошибка: ' + e.message);
+  }
+};
+
+window.appUpdateUI = function() {
+  var prof = getActiveProfile();
+  var sel = document.getElementById('profile-select');
+  sel.innerHTML = '';
+
+  if (!state.profiles.length) {
+    var opt = document.createElement('option');
+    opt.value = '';
+    opt.textContent = '-- Создайте пользователя --';
+    sel.appendChild(opt);
+    document.getElementById('user-input').placeholder = 'Сначала добавьте пользователя (+)...';
+    document.getElementById('kb-summary-title').textContent = '📂 База знаний (пользователь не выбран)';
+    document.getElementById('kb-content-area').value = '';
+    document.getElementById('sys-prompt-active').value = '';
+    document.getElementById('api-key-profile').value = '';
+  } else {
+    for (var i = 0; i < state.profiles.length; i++) {
+      var p = state.profiles[i];
+      var opt = document.createElement('option');
+      opt.value = p.id;
+      opt.textContent = p.name;
+      if (p.id === (prof ? prof.id : '')) opt.selected = true;
+      sel.appendChild(opt);
+    }
+    document.getElementById('user-input').placeholder = 'Сообщение для Gemini (' + prof.name + ')...';
+    document.getElementById('kb-summary-title').textContent = '📂 База знаний (Профиль: ' + prof.name + ')';
+    document.getElementById('kb-content-area').value = prof.kb || '';
+    document.getElementById('sys-prompt-active').value = prof.sysPrompt || DEFAULT_SYS_PROMPT;
+    document.getElementById('api-key-profile').value = prof.apiKey || '';
+  }
+
+  var sBtn = document.getElementById('safety-toggle');
+  if (state.safetyOff) {
+    sBtn.className = 'safety-btn safety-off';
+    sBtn.textContent = '🔓 Цензура: OFF';
+  } else {
+    sBtn.className = 'safety-btn safety-std';
+    sBtn.textContent = '🛡️ Фильтр: Стандарт';
+  }
+
+  document.getElementById('model-select').value = state.model;
+  document.getElementById('thinking-select').value = String(state.thinkingBudget);
+  document.getElementById('api-endpoint').value = state.endpoint;
+  document.getElementById('api-key-global').value = state.globalApiKey;
+
+  var cidInput = document.getElementById('google-client-id-input');
+  if (cidInput) {
+    cidInput.value = SafeStore.get('gm_google_client_id') || '';
+  }
+
+  window.appUpdateKBStats();
+  window.appUpdateDriveUI();
+  window.appRenderChat();
+};
+
+window.appToggleSafety = function() {
+  state.safetyOff = !state.safetyOff;
+  window.appSaveState();
+  window.appUpdateUI();
+};
+
+window.appSaveAndCloseSettings = function() {
+  window.appSaveState();
+  document.getElementById('drawer-settings').removeAttribute('open');
+};
+
+window.appSaveAndCloseKB = function() {
+  window.appSaveState();
+  document.getElementById('drawer-kb').removeAttribute('open');
+};
+
+window.appExportKB = function() {
+  var prof = getActiveProfile();
+  var text = prof ? (prof.kb || '') : '';
+  var blob = new Blob([text], { type: 'text/markdown;charset=utf-8' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'For_Gemini_' + (prof ? prof.name : 'Memory') + '.md';
+  a.click();
+};
+
+window.appImportKBFiles = function(fileList) {
+  if (!fileList || !fileList.length) return;
+  var prof = getActiveProfile();
+  if (!prof) return alert('Сначала добавьте пользователя!');
+  Array.from(fileList).forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var text = e.target.result;
+      prof.kb = (prof.kb ? prof.kb + '\n\n' : '') + '=== [ФАЙЛ: ' + file.name + '] ===\n' + text;
+      document.getElementById('kb-content-area').value = prof.kb;
+      window.appUpdateKBStats();
+      window.appSaveState();
+    };
+    reader.readAsText(file);
+  });
+};
+
+window.appExportBackup = function() {
+  var data = {
+    model: state.model,
+    thinkingBudget: state.thinkingBudget,
+    safetyOff: state.safetyOff,
+    endpoint: state.endpoint,
+    globalApiKey: state.globalApiKey,
+    profiles: state.profiles
+  };
+  var blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = 'Gemini_Studio_Backup_' + (new Date().toISOString().slice(0, 10)) + '.json';
+  a.click();
+};
+
+window.appPinToKB = function(text) {
+  var prof = getActiveProfile();
+  if (!prof) return alert('Сначала создайте пользователя!');
+  var note = '\n\n--- [Заметка от ' + new Date().toLocaleString('ru-RU') + '] ---\n' + text;
+  prof.kb = (prof.kb || '') + note;
+  document.getElementById('kb-content-area').value = prof.kb;
+  window.appUpdateKBStats();
+  window.appSaveState();
+  alert('Заметка прикреплена к базе знаний пользователя «' + prof.name + '»!');
+};
+
+window.appRenderChat = function() {
+  var container = document.getElementById('chat-container');
+  container.innerHTML = '';
+  var prof = getActiveProfile();
+
+  if (!prof) {
+    var emptyDiv = document.createElement('div');
+    emptyDiv.className = 'empty-state';
+    emptyDiv.innerHTML = '<div class="empty-icon">👤</div>' +
+      '<div class="empty-title">Добро пожаловать в Gemini Studio</div>' +
+      '<div class="empty-desc">Нажмите кнопку <strong>➕</strong> в левом верхнем углу, чтобы создать первого пользователя.</div>' +
+      '<button type="button" class="btn-save" onclick="window.appPromptAddUser()" style="margin-top:12px;">➕ Создать пользователя</button>';
+    container.appendChild(emptyDiv);
+    return;
+  }
+
+  if (!prof.history || !prof.history.length) {
+    var welcomeDiv = document.createElement('div');
+    welcomeDiv.className = 'empty-state';
+    welcomeDiv.innerHTML = '<div class="empty-icon">✨</div>' +
+      '<div class="empty-title">Привет, ' + escapeHtml(prof.name) + '!</div>' +
+      '<div class="empty-desc">Я готов к работе. Подключите Google Диск, загрузите файлы или просто задайте вопрос.</div>';
+    container.appendChild(welcomeDiv);
+    return;
+  }
+
+  for (var i = 0; i < prof.history.length; i++) {
+    var msg = prof.history[i];
+    var msgDiv = document.createElement('div');
+    msgDiv.className = 'message ' + (msg.role === 'user' ? 'msg-user' : 'msg-model');
+
+    var bubble = document.createElement('div');
+    bubble.className = 'bubble';
+
+    if (msg.role === 'model' && msg.thoughts) {
+      var d = document.createElement('details');
+      d.className = 'thought-box';
+      d.innerHTML = '<summary>💭 Рассуждения модели (' + msg.thoughts.length + ' симв.)</summary>' +
+                    '<div class="thought-content">' + escapeHtml(msg.thoughts) + '</div>';
+      bubble.appendChild(d);
+    }
+
+    if (msg.attachments && msg.attachments.length) {
+      var attDiv = document.createElement('div');
+      attDiv.style.marginBottom = '6px';
+      attDiv.style.display = 'flex';
+      attDiv.style.flexWrap = 'wrap';
+      attDiv.style.gap = '6px';
+      for (var j = 0; j < msg.attachments.length; j++) {
+        var att = msg.attachments[j];
+        if (att.previewUrl) {
+          var img = document.createElement('img');
+          img.src = att.previewUrl;
+          img.style.maxWidth = '180px';
+          img.style.maxHeight = '140px';
+          img.style.borderRadius = '8px';
+          img.style.display = 'block';
+          attDiv.appendChild(img);
+        } else {
+          var tag = document.createElement('span');
+          tag.className = 'attach-tag';
+          tag.textContent = '📎 ' + att.name;
+          attDiv.appendChild(tag);
+        }
+      }
+      bubble.appendChild(attDiv);
+    }
+
+    var textNode = document.createElement('div');
+    textNode.innerHTML = formatText(msg.text);
+    bubble.appendChild(textNode);
+
+    if (msg.role === 'model' && ((msg.groundingSources && msg.groundingSources.length) || (msg.searchQueries && msg.searchQueries.length))) {
+      var gBox = document.createElement('details');
+      gBox.className = 'thought-box';
+      gBox.style.borderColor = 'rgba(59, 130, 246, 0.4)';
+      gBox.style.backgroundColor = 'rgba(30, 58, 138, 0.2)';
+      var totalCnt = (msg.groundingSources ? msg.groundingSources.length : 0) || (msg.searchQueries ? msg.searchQueries.length : 0);
+      var inner = '<summary style="color:#60a5fa;cursor:pointer;">🌐 Найдено в Google Search (' + totalCnt + ' источников) ▼</summary><div style="margin-top:6px;font-size:11px;">';
+      if (msg.searchQueries && msg.searchQueries.length) {
+        inner += '<div style="color:var(--text-muted);margin-bottom:4px;">Поисковые запросы: <i>' + escapeHtml(msg.searchQueries.join(', ')) + '</i></div>';
+      }
+      if (msg.groundingSources && msg.groundingSources.length) {
+        inner += '<div style="display:flex;flex-wrap:wrap;gap:4px;">';
+        for (var s = 0; s < msg.groundingSources.length; s++) {
+          var src = msg.groundingSources[s];
+          inner += '<a href="' + escapeHtml(src.url) + '" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:2px 6px;border-radius:4px;background:#1e3a8a;color:#93c5fd;text-decoration:none;font-size:10px;max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + escapeHtml(src.title) + '">🔗 ' + escapeHtml(src.title) + '</a>';
+        }
+        inner += '</div>';
+      }
+      inner += '</div>';
+      gBox.innerHTML = inner;
+      bubble.appendChild(gBox);
+    }
+
+    msgDiv.appendChild(bubble);
+
+    var meta = document.createElement('div');
+    meta.className = 'msg-meta';
+    if (msg.role === 'model') {
+      var pinBtn = document.createElement('button');
+      pinBtn.className = 'icon-btn';
+      pinBtn.textContent = '📌 В базу памяти';
+      (function(t) {
+        pinBtn.onclick = function() { window.appPinToKB(t); };
+      })(msg.text);
+      meta.appendChild(pinBtn);
+
+      if (msg.usage) {
+        var uSpan = document.createElement('span');
+        uSpan.textContent = '⚡ ' + (msg.usage.prompt + msg.usage.output) + ' ток.';
+        meta.appendChild(uSpan);
+      }
+    }
+    msgDiv.appendChild(meta);
+    container.appendChild(msgDiv);
+  }
+
+  container.scrollTop = container.scrollHeight;
+};
+
+// File staging
+window.appHandleFiles = function(files) {
+  if (!files || !files.length) return;
+  Array.from(files).forEach(function(file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      var res = e.target.result;
+      var base64 = res.indexOf(',') !== -1 ? res.split(',')[1] : res;
+      stagedFiles.push({
+        name: file.name,
+        mimeType: file.type || 'application/octet-stream',
+        base64: base64,
+        previewUrl: file.type.indexOf('image/') === 0 ? res : null
+      });
+      window.appRenderStaged();
+    };
+    reader.readAsDataURL(file);
+  });
+};
+
+window.appRenderStaged = function() {
+  var bar = document.getElementById('attachments-bar');
+  bar.innerHTML = '';
+  stagedFiles.forEach(function(item, idx) {
+    var tag = document.createElement('div');
+    tag.className = 'attach-tag';
+    tag.innerHTML = '<span>' + (item.previewUrl ? '🖼️' : '📎') + ' ' + escapeHtml(item.name) + '</span> ' +
+                    '<span class="del" onclick="window.appRemoveStaged(' + idx + ')">✕</span>';
+    bar.appendChild(tag);
+  });
+};
+
+window.appRemoveStaged = function(idx) {
+  stagedFiles.splice(idx, 1);
+  window.appRenderStaged();
+};
+
+window.appHandleKey = function(e) {
+  if (e.key === 'Enter' && !e.shiftKey) {
+    e.preventDefault();
+    window.appSendMessage();
+  }
+};
+
+// Voice input
+var recognition = null;
+var isVoiceActive = false;
+
+window.appToggleVoice = function() {
+  var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SpeechRec) {
+    var isAndr = /Android/i.test(navigator.userAgent);
+    if (isAndr && confirm('Web Speech API недоступен.\n\nЗапустить диктофон телефона для голосового ввода?')) {
+      document.getElementById('voice-record-input').click();
+    } else {
+      alert('Голосовой ввод Web Speech API не поддерживается вашим браузером. Рекомендуется Google Chrome.');
+    }
+    return;
+  }
+
+  var btn = document.getElementById('mic-btn');
+  if (isVoiceActive) {
+    if (recognition) recognition.stop();
+    isVoiceActive = false;
+    btn.classList.remove('active');
+    return;
+  }
+
+  try {
+    recognition = new SpeechRec();
+    recognition.lang = 'ru-RU';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+
+    var input = document.getElementById('user-input');
+    var baseText = input.value.trim() ? input.value.trim() + ' ' : '';
+
+    recognition.onstart = function() {
+      isVoiceActive = true;
+      btn.classList.add('active');
+    };
+
+    recognition.onresult = function(event) {
+      var currentFinal = '';
+      var currentInterim = '';
+      for (var i = 0; i < event.results.length; ++i) {
+        var res = event.results[i];
+        if (!res || !res[0]) continue;
+        if (res.isFinal) {
+          currentFinal += res[0].transcript + ' ';
+        } else {
+          currentInterim += res[0].transcript;
+        }
+      }
+      input.value = (baseText + currentFinal + currentInterim).replace(/\s+/g, ' ');
+    };
+
+    recognition.onerror = function(ev) {
+      isVoiceActive = false;
+      btn.classList.remove('active');
+      if (ev.error === 'not-allowed') {
+        if (/Android/i.test(navigator.userAgent) && confirm('Доступ к микрофону заблокирован.\nЗапустить диктофон телефона?')) {
+          document.getElementById('voice-record-input').click();
+        } else {
+          alert('Доступ к микрофону заблокирован в настройках браузера. Разрешите микрофон для этого сайта.');
+        }
+      }
+    };
+
+    recognition.onend = function() {
+      isVoiceActive = false;
+      btn.classList.remove('active');
+    };
+
+    recognition.start();
+  } catch (err) {
+    alert('Ошибка запуска микрофона: ' + err.message);
+  }
+};
+
+window.appHandleVoiceRecord = function(files) {
+  if (!files || !files.length) return;
+  window.appHandleFiles(files);
+  var inp = document.getElementById('user-input');
+  if (!inp.value.trim()) {
+    inp.value = 'Прослушай моё голосовое сообщение и ответь на него.';
+  }
+  alert('Голосовая запись прикреплена! Нажмите кнопку отправки (➤).');
+};
+
+// Send message
+window.appSendMessage = async function() {
+  var prof = getActiveProfile();
+  if (!prof) {
+    alert('Сначала добавьте пользователя (кнопка ➕ в левом верхнем углу)!');
+    return;
+  }
+
+  var activeKey = prof.apiKey || state.globalApiKey;
+  if (!activeKey) {
+    alert('Пожалуйста, введите ваш API-ключ Gemini в настройках (шестерёнка сверху).');
+    document.getElementById('drawer-settings').setAttribute('open', 'true');
+    return;
+  }
+
+  var inp = document.getElementById('user-input');
+  var txt = inp.value.trim();
+  if (!txt && !stagedFiles.length) return;
+
+  if (isVoiceActive && recognition) {
+    try { recognition.stop(); } catch(e) {}
+    isVoiceActive = false;
+    var micBtn = document.getElementById('mic-btn');
+    if (micBtn) micBtn.classList.remove('active');
+  }
+
+  var currentAttach = stagedFiles.slice();
+  stagedFiles = [];
+  window.appRenderStaged();
+  inp.value = '';
+
+  prof.history.push({
+    role: 'user',
+    text: txt,
+    attachments: currentAttach
+  });
+
+  window.appRenderChat();
+
+  var sendBtn = document.getElementById('send-btn');
+  sendBtn.disabled = true;
+
+  var container = document.getElementById('chat-container');
+  var loadingDiv = document.createElement('div');
+  loadingDiv.className = 'message msg-model';
+  loadingDiv.id = 'loading-indicator';
+  loadingDiv.innerHTML = '<div class="bubble" style="color:var(--text-muted);">⏳ На связи, думаем на ' + state.model + '...</div>';
+  container.appendChild(loadingDiv);
+  container.scrollTop = container.scrollHeight;
+
+  try {
+    var apiContents = [];
+    for (var i = 0; i < prof.history.length; i++) {
+      var msg = prof.history[i];
+      var parts = [];
+      if (msg.attachments && msg.attachments.length) {
+        for (var j = 0; j < msg.attachments.length; j++) {
+          var a = msg.attachments[j];
+          if (a.base64) {
+            parts.push({ inlineData: { mimeType: a.mimeType, data: a.base64 } });
+          }
+        }
+      }
+      if (msg.text) {
+        parts.push({ text: msg.text });
+      }
+      apiContents.push({
+        role: msg.role === 'user' ? 'user' : 'model',
+        parts: parts
+      });
+    }
+
+    var now = new Date();
+    var dateStr = now.toLocaleDateString('ru-RU', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    var timeStr = now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+    var timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'локальное';
+
+    var temporalContext = '[ТЕКУЩАЯ СИСТЕМНАЯ ДАТА И ВРЕМЯ]:\n' +
+      '- Сегодня: ' + dateStr + '\n' +
+      '- Время: ' + timeStr + ' (' + timeZone + ')\n' +
+      '- Текущий год: ' + now.getFullYear() + '\n' +
+      '- ISO timestamp: ' + now.toISOString() + '\n' +
+      'ВАЖНЕЙШЕЕ ПРАВИЛО: Реальное сегодняшнее число — именно ' + dateStr + ', ' + now.getFullYear() + ' год. ' +
+      'При любых вопросах о сегодняшнем дне, погоде, событиях, новостях или праздниках всегда опирайся на эту точную дату и используй встроенный поиск Google Search. Сейчас именно ' + now.getFullYear() + ' год!';
+
+    var fullSys = (prof.sysPrompt || DEFAULT_SYS_PROMPT) + '\n\n' + temporalContext + (prof.kb ? '\n\n=== БАЗА ЗНАНИЙ ===\n' + prof.kb : '');
+    var threshold = state.safetyOff ? 'BLOCK_NONE' : 'BLOCK_MEDIUM_AND_ABOVE';
+
+    var payload = {
+      systemInstruction: { parts: [{ text: fullSys }] },
+      contents: apiContents,
+      tools: [
+        { googleSearch: {} }
+      ],
+      safetySettings: [
+        { category: 'HARM_CATEGORY_HARASSMENT', threshold: threshold },
+        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: threshold },
+        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: threshold },
+        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: threshold }
+      ],
+      generationConfig: {
+        temperature: 0.85
+      }
+    };
+
+    if (state.thinkingBudget > 0) {
+      payload.generationConfig.thinkingConfig = {
+        thinkingBudget: state.thinkingBudget
+      };
+    }
+
+    var ep = normalizeEndpoint(state.endpoint);
+    var url = ep + '/v1beta/models/' + encodeURIComponent(state.model) + ':generateContent?key=' + encodeURIComponent(activeKey);
+
+    var maxRetries = 2;
+    var attempt = 0;
+    var res, data;
+
+    while (attempt <= maxRetries) {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+      data = await res.json();
+      if (res.ok) break;
+
+      var errStr = (data.error && data.error.message) || '';
+      if (payload.tools && (errStr.indexOf('tools') !== -1 || errStr.indexOf('googleSearch') !== -1 || errStr.indexOf('Unknown field') !== -1)) {
+        delete payload.tools;
+        continue;
+      }
+
+      var isHighDemand = res.status === 503 || errStr.indexOf('high demand') !== -1;
+      if (isHighDemand && attempt < maxRetries) {
+        attempt++;
+        await new Promise(function(r) { setTimeout(r, 2000 * attempt); });
+        continue;
+      }
+      break;
+    }
+
+    if (!res.ok) {
+      var errMsg = (data.error && data.error.message) || ('HTTP ' + res.status);
+      var hint = '';
+      if (errMsg.indexOf('limit: 0') !== -1) {
+        hint = '\n\n⚡ У модели «' + state.model + '» квота 0 на бесплатном тарифе. Переключитесь на 3.8 Flash!';
+      }
+      throw new Error(errMsg + hint);
+    }
+
+    var candidate = data.candidates && data.candidates[0];
+    if (!candidate || !candidate.content || !candidate.content.parts) {
+      throw new Error('Пустой ответ модели или блок безопасности.');
+    }
+
+    var ansText = '';
+    var thoughts = '';
+    for (var k = 0; k < candidate.content.parts.length; k++) {
+      var pt = candidate.content.parts[k];
+      if (pt.thought) {
+        thoughts += (pt.text || '') + '\n';
+      } else if (pt.text) {
+        ansText += pt.text;
+      }
+    }
+
+    var usage = data.usageMetadata ? {
+      prompt: data.usageMetadata.promptTokenCount,
+      output: data.usageMetadata.candidatesTokenCount
+    } : null;
+
+    var gMeta = candidate.groundingMetadata;
+    var groundingSources = [];
+    if (gMeta && gMeta.groundingChunks && Array.isArray(gMeta.groundingChunks)) {
+      for (var gc = 0; gc < gMeta.groundingChunks.length; gc++) {
+        var chunk = gMeta.groundingChunks[gc];
+        if (chunk.web && chunk.web.uri) {
+          groundingSources.push({
+            title: chunk.web.title || chunk.web.uri,
+            url: chunk.web.uri
+          });
+        }
+      }
+    }
+    var searchQueries = (gMeta && gMeta.webSearchQueries) || [];
+
+    prof.history.push({
+      role: 'model',
+      text: ansText.trim(),
+      thoughts: thoughts.trim() || null,
+      groundingSources: groundingSources.length ? groundingSources : null,
+      searchQueries: searchQueries.length ? searchQueries : null,
+      usage: usage
+    });
+  } catch (err) {
+    prof.history.push({
+      role: 'model',
+      text: '⚠️ Ошибка: ' + err.message
+    });
+  } finally {
+    sendBtn.disabled = false;
+    window.appSaveState();
+    window.appRenderChat();
+  }
+};
+
+// Initial startup
+window.appUpdateUI();
+setTimeout(initGoogleAuthClient, 500);
+</script>
+</body>
+</html>
